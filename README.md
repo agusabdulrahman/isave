@@ -1,27 +1,98 @@
-# isaveup
+# iSaveUp
 
-A new Flutter project.
+iSaveUp adalah aplikasi Flutter untuk mencatat income/expense, transfer antar akun, recurring transaction, dan monitoring budget bulanan.
 
-## Getting Started
+![iSaveUp Screenshot](assets/docs/Screenshot%202026-05-14%20113110.png)
 
-This project is a starting point for a Flutter application.
+## Fitur Utama
 
-A few resources to get you started if this is your first Flutter project:
+- Autentikasi user (Supabase Auth)
+- Pencatatan transaksi income/expense
+- Transfer antar akun
+- Recurring transaction (auto-create transaksi saat jatuh tempo)
+- Budget bulanan dengan mode:
+  - auto reset tiap bulan
+  - manual set per bulan
+- Edit dan hapus transaksi dari halaman Home
+- Multi-currency (`USD`, `IDR`)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Tech Stack
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Flutter (Material 3)
+- Supabase (`supabase_flutter`)
+- Google Fonts
 
+## Struktur Folder `lib`
+
+```text
+lib/
+  config/
+  controller/
+  model/
+  routes/
+  utils/
+  view/
+    app.dart
+    core/
+    home/
+    wallet/
+    goals/
+    profile/
+  widgets/
+  main.dart
 ```
-Flutter run key commands.
-r Hot reload.
-R Hot restart.
-h List all available interactive commands.
-d Detach (terminate "flutter run" but leave application running).
-c Clear the screen
-q Quit (terminate the application on the device).
+
+## Prasyarat
+
+- Flutter SDK terpasang
+- Project Supabase aktif
+- Tabel database yang dibutuhkan sudah tersedia:
+  - `profiles`
+  - `accounts`
+  - `categories`
+  - `transactions`
+  - `recurring_transactions`
+
+## Konfigurasi
+
+Saat ini URL dan anon key Supabase diset di:
+
+- `lib/config/supabase_config.dart`
+
+Untuk production, direkomendasikan pindahkan key ke env/secret management.
+
+## Menjalankan Project
+
+```bash
+flutter pub get
+flutter run
 ```
+
+Untuk web:
+
+```bash
+flutter run -d chrome
+```
+
+## Command Saat Development
+
+```text
+r  Hot reload
+R  Hot restart
+h  List all available interactive commands
+d  Detach (terminate "flutter run" but leave app running)
+c  Clear screen
+q  Quit
+```
+
+## Quality Check
+
+```bash
+dart format lib
+flutter analyze
+```
+
+## Catatan
+
+- Data load utama sudah difilter per user (`user_id`) untuk mencegah data tercampur antar akun user.
+- Jika ada perubahan besar struktur file, lakukan full restart (bukan hanya hot restart) saat debug web.
