@@ -51,7 +51,7 @@ class _CurrencySettingCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Set default currency used in Home, Accounts, and Reports.',
+            'Set default currency used in Home, Accounts, and Reports. Default: IDR.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.white54,
                 ),

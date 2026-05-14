@@ -176,7 +176,7 @@ class AppState extends ChangeNotifier {
   final Map<String, double> manualMonthlyBudgets = {};
   BudgetResetMode budgetResetMode = BudgetResetMode.autoMonthly;
 
-  String selectedCurrency = 'USD';
+  String selectedCurrency = 'IDR';
 
   List<Account> accounts = [];
   List<Category> categories = [];
