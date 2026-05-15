@@ -255,28 +255,43 @@ class _MainShellState extends State<MainShell> {
       body: _tabs[_index],
       bottomNavigationBar: NavigationBar(
         height: 68,
+        backgroundColor: const Color(0xFF111214),
+        surfaceTintColor: const Color(0xFF111214),
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
-        indicatorColor: const Color(0xFFE6EBFF),
+        indicatorColor: const Color(0xFF2B2E34),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              color: Color(0xFFB5FF4D),
+              fontWeight: FontWeight.w700,
+            );
+          }
+          return const TextStyle(color: Colors.white70);
+        }),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
+            icon: Icon(Icons.home_outlined, color: Colors.white70),
+            selectedIcon: Icon(Icons.home_rounded, color: Color(0xFFB5FF4D)),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            icon: Icon(Icons.account_balance_wallet_outlined,
+                color: Colors.white70),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded,
+                color: Color(0xFFB5FF4D)),
             label: 'Accounts',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
+            icon: Icon(Icons.bar_chart_outlined, color: Colors.white70),
+            selectedIcon:
+                Icon(Icons.bar_chart_rounded, color: Color(0xFFB5FF4D)),
             label: 'Reports',
           ),
           NavigationDestination(
-            icon: Icon(Icons.more_horiz_outlined),
-            selectedIcon: Icon(Icons.more_horiz_rounded),
+            icon: Icon(Icons.more_horiz_outlined, color: Colors.white70),
+            selectedIcon:
+                Icon(Icons.more_horiz_rounded, color: Color(0xFFB5FF4D)),
             label: 'More',
           ),
         ],

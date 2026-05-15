@@ -10,61 +10,66 @@ class AccountsScreen extends StatelessWidget {
         state.accounts.where((acc) => acc.kind == AccountKind.bank).toList();
     final cashAccounts =
         state.accounts.where((acc) => acc.kind == AccountKind.cash).toList();
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Row(
-            children: [
-              Text(
-                'Accounts',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+    return Container(
+      color: const Color(0xFF111214),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Accounts',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.white70),
+                  onPressed: () => supabase.auth.signOut(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            BalanceCard(
+              totalBalance:
+                  state.totalBalanceForCurrency(state.selectedCurrency),
+              currency: state.selectedCurrency,
+              trend: state.weeklyBalanceTrend(state.selectedCurrency),
+            ),
+            const SizedBox(height: 18),
+            SectionHeader(
+              title: 'Bank Accounts',
+              trailing: formatMoney(
+                bankAccounts
+                    .where((acc) => acc.currency == state.selectedCurrency)
+                    .fold(0, (sum, acc) => sum + acc.balance),
+                state.selectedCurrency,
               ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () => supabase.auth.signOut(),
+            ),
+            const SizedBox(height: 10),
+            ...bankAccounts.map(
+              (account) => AccountTile(
+                title: account.name,
+                subtitle:
+                    '${account.kind.name.toUpperCase()} - ${account.currency}',
+                amount: formatMoney(account.balance, account.currency),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          BalanceCard(
-            totalBalance: state.totalBalanceForCurrency(state.selectedCurrency),
-            currency: state.selectedCurrency,
-            trend: state.weeklyBalanceTrend(state.selectedCurrency),
-          ),
-          const SizedBox(height: 18),
-          SectionHeader(
-            title: 'Bank Accounts',
-            trailing: formatMoney(
-              bankAccounts
-                  .where((acc) => acc.currency == state.selectedCurrency)
-                  .fold(0, (sum, acc) => sum + acc.balance),
-              state.selectedCurrency,
             ),
-          ),
-          const SizedBox(height: 10),
-          ...bankAccounts.map(
-            (account) => AccountTile(
-              title: account.name,
-              subtitle:
-                  '${account.kind.name.toUpperCase()} � ${account.currency}',
-              amount: formatMoney(account.balance, account.currency),
+            const SizedBox(height: 18),
+            const SectionHeader(title: 'Cash', trailing: ''),
+            const SizedBox(height: 10),
+            ...cashAccounts.map(
+              (account) => AccountTile(
+                title: account.name,
+                subtitle: 'On hand - ${account.currency}',
+                amount: formatMoney(account.balance, account.currency),
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const SectionHeader(title: 'Cash', trailing: ''),
-          const SizedBox(height: 10),
-          ...cashAccounts.map(
-            (account) => AccountTile(
-              title: account.name,
-              subtitle: 'On hand � ${account.currency}',
-              amount: formatMoney(account.balance, account.currency),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -86,15 +91,8 @@ class BalanceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1C1E22),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +103,7 @@ class BalanceCard extends StatelessWidget {
                 'Total Balance',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       letterSpacing: 0.6,
-                      color: Colors.black54,
+                      color: Colors.white70,
                     ),
               ),
               const Spacer(),
@@ -113,10 +111,14 @@ class BalanceCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F2F6),
+                  color: const Color(0xFF2B2E34),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.visibility_off_outlined, size: 18),
+                child: const Icon(
+                  Icons.visibility_off_outlined,
+                  size: 18,
+                  color: Colors.white70,
+                ),
               ),
             ],
           ),
@@ -128,6 +130,7 @@ class BalanceCard extends StatelessWidget {
               key: ValueKey(totalBalance),
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
             ),
           ),
@@ -201,7 +204,7 @@ class BalanceChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final gridPaint = Paint()
-      ..color = const Color(0xFFE8E9EE)
+      ..color = const Color(0xFF2D3036)
       ..strokeWidth = 1;
 
     for (var i = 0; i < 4; i++) {
@@ -212,12 +215,12 @@ class BalanceChartPainter extends CustomPainter {
     if (values.isEmpty) return;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF1C1B1F)
+      ..color = const Color(0xFFB5FF4D)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = const Color(0xFF1C1B1F).withOpacity(0.08)
+      ..color = const Color(0xFFB5FF4D).withValues(alpha: 0.12)
       ..style = PaintingStyle.fill;
 
     final path = Path();
@@ -264,7 +267,7 @@ class SectionHeader extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 letterSpacing: 0.6,
                 fontWeight: FontWeight.w700,
-                color: Colors.black54,
+                color: Colors.white70,
               ),
         ),
         const Spacer(),
@@ -273,6 +276,7 @@ class SectionHeader extends StatelessWidget {
             trailing,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
           ),
       ],
@@ -298,15 +302,8 @@ class AccountTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1C1E22),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -314,10 +311,14 @@ class AccountTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F2F6),
+              color: const Color(0xFF2B2E34),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.credit_card_rounded, size: 22),
+            child: const Icon(
+              Icons.credit_card_rounded,
+              size: 22,
+              color: Colors.white70,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -328,13 +329,14 @@ class AccountTile extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: Colors.white54,
                       ),
                 ),
               ],
@@ -344,6 +346,7 @@ class AccountTile extends StatelessWidget {
             amount,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
           ),
         ],
