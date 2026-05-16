@@ -692,26 +692,6 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     });
   }
 
-  void _applyAutoFill(AppState state) {
-    final random = Random();
-    final autoTitles = ['Coffee', 'Transfer', 'Gym', 'Uber', 'Salary', 'Gift'];
-    setState(() {
-      _titleController.text = autoTitles[random.nextInt(autoTitles.length)];
-      _amountController.text = (random.nextInt(200) + 20).toString();
-      _type =
-          random.nextBool() ? TransactionType.income : TransactionType.expense;
-      _mode = _type == TransactionType.income
-          ? TransactionMode.income
-          : TransactionMode.expense;
-      _autoFill = true;
-      _categoryId = state.categories
-          .where((cat) => cat.type == _type)
-          .map((cat) => cat.id)
-          .cast<String?>()
-          .firstOrNull;
-    });
-  }
-
   Future<void> _save(AppState state) async {
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;
     if (amount <= 0) return;

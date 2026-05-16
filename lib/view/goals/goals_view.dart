@@ -1,12 +1,120 @@
 part of 'package:isaveup/view/app.dart';
 
-class ReportsScreen extends StatelessWidget {
+enum _ReportRange { m1, m3, m6, y1 }
+
+extension on _ReportRange {
+  String get label {
+    switch (this) {
+      case _ReportRange.m1:
+        return '1M';
+      case _ReportRange.m3:
+        return '3M';
+      case _ReportRange.m6:
+        return '6M';
+      case _ReportRange.y1:
+        return '1Y';
+    }
+  }
+
+  int get months {
+    switch (this) {
+      case _ReportRange.m1:
+        return 1;
+      case _ReportRange.m3:
+        return 3;
+      case _ReportRange.m6:
+        return 6;
+      case _ReportRange.y1:
+        return 12;
+    }
+  }
+
+  String get summaryLabel {
+    switch (this) {
+      case _ReportRange.m1:
+        return 'this month';
+      case _ReportRange.m3:
+        return 'last 3 months';
+      case _ReportRange.m6:
+        return 'last 6 months';
+      case _ReportRange.y1:
+        return 'last 1 year';
+    }
+  }
+}
+
+class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
+
+  @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen> {
+  _ReportRange _incomeExpenseRange = _ReportRange.m1;
+  _ReportRange _profitLossRange = _ReportRange.m1;
+
+  DateTime _rangeStart(int months) {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month - (months - 1), 1);
+  }
+
+  double _sumByTypeForRange(
+      AppState state, TransactionType type, _ReportRange range) {
+    final start = _rangeStart(range.months);
+    final currency = state.selectedCurrency;
+    return state.transactions.where((entry) {
+      return entry.currency == currency &&
+          entry.type == type &&
+          !entry.date.isBefore(start);
+    }).fold(0, (sum, entry) => sum + entry.amount);
+  }
+
+  List<double> _profitBarsForRange(AppState state, _ReportRange range) {
+    final now = DateTime.now();
+    final start = _rangeStart(range.months);
+    final totalMs = now.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
+    if (totalMs <= 0) return const [0.55];
+
+    final bucketCount = range.months == 1 ? 4 : 6;
+    final bucketWidth = totalMs / bucketCount;
+    final buckets = List<double>.filled(bucketCount, 0);
+    final currency = state.selectedCurrency;
+
+    for (final entry in state.transactions) {
+      if (entry.currency != currency || entry.date.isBefore(start)) continue;
+      final offset = entry.date.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
+      final index = (offset / bucketWidth).floor().clamp(0, bucketCount - 1);
+      final value =
+          entry.type == TransactionType.income ? entry.amount : -entry.amount;
+      buckets[index] += value;
+    }
+
+    final minBucket = buckets.reduce(min);
+    final maxBucket = buckets.reduce(max);
+    final span = maxBucket - minBucket;
+    if (span == 0) return List<double>.filled(bucketCount, 0.55);
+
+    return buckets
+        .map((v) => 0.2 + (((v - minBucket) / span) * 0.8))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     final budget = state.budgetForMonth(state.selectedCurrency, DateTime.now());
+    final expenses =
+        _sumByTypeForRange(state, TransactionType.expense, _incomeExpenseRange);
+    final income =
+        _sumByTypeForRange(state, TransactionType.income, _incomeExpenseRange);
+    final profitExpenses =
+        _sumByTypeForRange(state, TransactionType.expense, _profitLossRange);
+    final profitIncome =
+        _sumByTypeForRange(state, TransactionType.income, _profitLossRange);
+    final profit = profitIncome - profitExpenses;
+    final profitBars = _profitBarsForRange(state, _profitLossRange);
+
     return _DarkShell(
       title: 'Reports',
       child: Column(
@@ -25,17 +133,28 @@ class ReportsScreen extends StatelessWidget {
           FadeSlideIn(
             delay: 0.08,
             child: ReportIncomeExpenseCard(
-              expenses: state.totalExpenseThisMonth,
-              income: state.totalIncomeThisMonth,
+              expenses: expenses,
+              income: income,
               currency: state.selectedCurrency,
+              selectedRange: _incomeExpenseRange,
+              periodLabel: _incomeExpenseRange.summaryLabel,
+              onRangeChanged: (range) {
+                setState(() => _incomeExpenseRange = range);
+              },
             ),
           ),
           const SizedBox(height: 16),
           FadeSlideIn(
             delay: 0.16,
             child: ProfitLossCard(
-              profit: state.totalIncomeThisMonth - state.totalExpenseThisMonth,
+              profit: profit,
               currency: state.selectedCurrency,
+              selectedRange: _profitLossRange,
+              periodLabel: _profitLossRange.summaryLabel,
+              bars: profitBars,
+              onRangeChanged: (range) {
+                setState(() => _profitLossRange = range);
+              },
             ),
           ),
         ],
@@ -396,11 +515,17 @@ class ReportIncomeExpenseCard extends StatelessWidget {
       {super.key,
       required this.expenses,
       required this.income,
-      required this.currency});
+      required this.currency,
+      required this.selectedRange,
+      required this.periodLabel,
+      required this.onRangeChanged});
 
   final double expenses;
   final double income;
   final String currency;
+  final _ReportRange selectedRange;
+  final String periodLabel;
+  final ValueChanged<_ReportRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -423,26 +548,27 @@ class ReportIncomeExpenseCard extends StatelessWidget {
           const SizedBox(height: 10),
           Wrap(
             spacing: 10,
-            children: const [
-              _FilterChip(label: '1M', selected: true),
-              _FilterChip(label: '3M', selected: false),
-              _FilterChip(label: '6M', selected: false),
-              _FilterChip(label: '1Y', selected: false),
-            ],
+            children: _ReportRange.values
+                .map((range) => _FilterChip(
+                      label: range.label,
+                      selected: range == selectedRange,
+                      onTap: () => onRangeChanged(range),
+                    ))
+                .toList(),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _MiniStat(
                 icon: Icons.arrow_upward_rounded,
-                label: 'Expenses for this month',
+                label: 'Expenses for $periodLabel',
                 amount: '-${formatMoney(expenses, currency)}',
                 accent: const Color(0xFF9CA3AF),
               ),
               const SizedBox(width: 12),
               _MiniStat(
                 icon: Icons.arrow_downward_rounded,
-                label: 'Income for this month',
+                label: 'Income for $periodLabel',
                 amount: formatMoney(income, currency),
                 accent: const Color(0xFFB5FF4D),
               ),
@@ -455,25 +581,37 @@ class ReportIncomeExpenseCard extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected ? const Color(0xFF2C2F36) : Colors.transparent,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF2C2F36)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Colors.white70,
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2C2F36) : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF2C2F36)),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.white70,
+                ),
+          ),
+        ),
       ),
     );
   }
@@ -536,11 +674,22 @@ class _MiniStat extends StatelessWidget {
 }
 
 class ProfitLossCard extends StatelessWidget {
-  const ProfitLossCard(
-      {super.key, required this.profit, required this.currency});
+  const ProfitLossCard({
+    super.key,
+    required this.profit,
+    required this.currency,
+    required this.selectedRange,
+    required this.periodLabel,
+    required this.bars,
+    required this.onRangeChanged,
+  });
 
   final double profit;
   final String currency;
+  final _ReportRange selectedRange;
+  final String periodLabel;
+  final List<double> bars;
+  final ValueChanged<_ReportRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -563,21 +712,22 @@ class ProfitLossCard extends StatelessWidget {
           const SizedBox(height: 10),
           Wrap(
             spacing: 10,
-            children: const [
-              _FilterChip(label: '1M', selected: true),
-              _FilterChip(label: '3M', selected: false),
-              _FilterChip(label: '6M', selected: false),
-              _FilterChip(label: '1Y', selected: false),
-            ],
+            children: _ReportRange.values
+                .map((range) => _FilterChip(
+                      label: range.label,
+                      selected: range == selectedRange,
+                      onTap: () => onRangeChanged(range),
+                    ))
+                .toList(),
           ),
           const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Expanded(
+              Expanded(
                 child: SizedBox(
                   height: 110,
-                  child: AnimatedProfitBars(),
+                  child: AnimatedProfitBars(bars: bars),
                 ),
               ),
               const SizedBox(width: 14),
@@ -585,7 +735,7 @@ class ProfitLossCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Profit for this month',
+                    'Profit for $periodLabel',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white54,
                         ),
@@ -609,7 +759,9 @@ class ProfitLossCard extends StatelessWidget {
 }
 
 class AnimatedProfitBars extends StatefulWidget {
-  const AnimatedProfitBars({super.key});
+  const AnimatedProfitBars({super.key, required this.bars});
+
+  final List<double> bars;
 
   @override
   State<AnimatedProfitBars> createState() => _AnimatedProfitBarsState();
@@ -634,12 +786,25 @@ class _AnimatedProfitBarsState extends State<AnimatedProfitBars>
   }
 
   @override
+  void didUpdateWidget(covariant AnimatedProfitBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bars != widget.bars) {
+      _controller
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return CustomPaint(
-          painter: ProfitBarsPainter(progress: _controller.value),
+          painter: ProfitBarsPainter(
+            progress: _controller.value,
+            bars: widget.bars,
+          ),
         );
       },
     );
@@ -647,14 +812,14 @@ class _AnimatedProfitBarsState extends State<AnimatedProfitBars>
 }
 
 class ProfitBarsPainter extends CustomPainter {
-  ProfitBarsPainter({required this.progress});
+  ProfitBarsPainter({required this.progress, required this.bars});
 
   final double progress;
+  final List<double> bars;
 
   @override
   void paint(Canvas canvas, Size size) {
     final barPaint = Paint()..style = PaintingStyle.fill;
-    final bars = [0.4, 0.6, 0.85, 0.35, 0.7];
     final width = size.width / (bars.length * 1.6);
     final gap = width * 0.6;
 
@@ -675,5 +840,5 @@ class ProfitBarsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ProfitBarsPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress || oldDelegate.bars != bars;
 }

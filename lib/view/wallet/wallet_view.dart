@@ -1,7 +1,152 @@
 part of 'package:isaveup/view/app.dart';
 
-class AccountsScreen extends StatelessWidget {
+enum _BalanceRange { d1, w1, m1, m6, y1 }
+
+extension on _BalanceRange {
+  String get label {
+    switch (this) {
+      case _BalanceRange.d1:
+        return '1D';
+      case _BalanceRange.w1:
+        return '1W';
+      case _BalanceRange.m1:
+        return '1M';
+      case _BalanceRange.m6:
+        return '6M';
+      case _BalanceRange.y1:
+        return '1Y';
+    }
+  }
+}
+
+class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
+
+  @override
+  State<AccountsScreen> createState() => _AccountsScreenState();
+}
+
+class _AccountsScreenState extends State<AccountsScreen> {
+  _BalanceRange _selectedRange = _BalanceRange.m1;
+  bool _hideBalance = false;
+
+  _BalanceTrendData _trendForRange(AppState state, _BalanceRange range) {
+    final now = DateTime.now();
+    late final DateTime start;
+    late final int bucketCount;
+
+    switch (range) {
+      case _BalanceRange.d1:
+        start = now.subtract(const Duration(hours: 24));
+        bucketCount = 8;
+      case _BalanceRange.w1:
+        start = now.subtract(const Duration(days: 7));
+        bucketCount = 7;
+      case _BalanceRange.m1:
+        start = DateTime(now.year, now.month - 1, now.day, now.hour, now.minute);
+        bucketCount = 8;
+      case _BalanceRange.m6:
+        start = DateTime(now.year, now.month - 6, now.day, now.hour, now.minute);
+        bucketCount = 6;
+      case _BalanceRange.y1:
+        start = DateTime(now.year - 1, now.month, now.day, now.hour, now.minute);
+        bucketCount = 12;
+    }
+
+    final totalMs = now.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
+    if (totalMs <= 0) {
+      final value = state.totalBalanceForCurrency(state.selectedCurrency);
+      return _BalanceTrendData(
+        normalized: const [0.5],
+        minValue: value,
+        maxValue: value,
+      );
+    }
+    final bucketMs = totalMs / bucketCount;
+    final buckets = List<double>.filled(bucketCount, 0);
+    final currency = state.selectedCurrency;
+
+    for (final entry in state.transactions.where((t) => t.currency == currency)) {
+      final t = entry.date.millisecondsSinceEpoch;
+      if (t < start.millisecondsSinceEpoch || t > now.millisecondsSinceEpoch) {
+        continue;
+      }
+      final idx =
+          ((t - start.millisecondsSinceEpoch) / bucketMs).floor().clamp(0, bucketCount - 1);
+      final delta =
+          entry.type == TransactionType.income ? entry.amount : -entry.amount;
+      buckets[idx] += delta;
+    }
+
+    var running = state.totalBalanceForCurrency(currency) -
+        buckets.fold<double>(0, (sum, v) => sum + v);
+    final series = <double>[];
+    for (final delta in buckets) {
+      running += delta;
+      series.add(running);
+    }
+
+    final minValue = series.reduce(min);
+    final maxValue = series.reduce(max);
+    final span = max(1, maxValue - minValue);
+    return _BalanceTrendData(
+      normalized: series.map((value) => (value - minValue) / span).toList(),
+      minValue: minValue,
+      maxValue: maxValue,
+    );
+  }
+
+  List<String> _xAxisLabelsForRange(_BalanceRange range) {
+    final now = DateTime.now();
+    String hourLabel(DateTime dt) {
+      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+      final suffix = dt.hour >= 12 ? 'PM' : 'AM';
+      return '$hour $suffix';
+    }
+
+    switch (range) {
+      case _BalanceRange.d1:
+        return [
+          hourLabel(now.subtract(const Duration(hours: 18))),
+          hourLabel(now.subtract(const Duration(hours: 12))),
+          hourLabel(now.subtract(const Duration(hours: 6))),
+          hourLabel(now),
+        ];
+      case _BalanceRange.w1:
+        return const ['6D', '4D', '2D', 'Today'];
+      case _BalanceRange.m1:
+        return const ['4W', '3W', '2W', 'Now'];
+      case _BalanceRange.m6:
+        return const ['6M', '4M', '2M', 'Now'];
+      case _BalanceRange.y1:
+        return const ['12M', '8M', '4M', 'Now'];
+    }
+  }
+
+  String _compactMoney(double value) {
+    final abs = value.abs();
+    String short;
+    if (abs >= 1000000000) {
+      short = '${(value / 1000000000).toStringAsFixed(1)}B';
+    } else if (abs >= 1000000) {
+      short = '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (abs >= 1000) {
+      short = '${(value / 1000).toStringAsFixed(1)}K';
+    } else {
+      short = value.toStringAsFixed(0);
+    }
+    return short;
+  }
+
+  List<String> _yAxisLabels(double minValue, double maxValue, String currency) {
+    final steps = 4;
+    final span = maxValue - minValue;
+    return List<String>.generate(steps, (i) {
+      final t = 1 - (i / (steps - 1));
+      final value = minValue + (span * t);
+      return _compactMoney(value);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,6 +155,14 @@ class AccountsScreen extends StatelessWidget {
         state.accounts.where((acc) => acc.kind == AccountKind.bank).toList();
     final cashAccounts =
         state.accounts.where((acc) => acc.kind == AccountKind.cash).toList();
+    final trendData = _trendForRange(state, _selectedRange);
+    final labels = _xAxisLabelsForRange(_selectedRange);
+    final yAxisLabels = _yAxisLabels(
+      trendData.minValue,
+      trendData.maxValue,
+      state.selectedCurrency,
+    );
+
     return Container(
       color: const Color(0xFF111214),
       child: SafeArea(
@@ -37,7 +190,17 @@ class AccountsScreen extends StatelessWidget {
               totalBalance:
                   state.totalBalanceForCurrency(state.selectedCurrency),
               currency: state.selectedCurrency,
-              trend: state.weeklyBalanceTrend(state.selectedCurrency),
+              trend: trendData.normalized,
+              xAxisLabels: labels,
+              yAxisLabels: yAxisLabels,
+              selectedRange: _selectedRange,
+              hideBalance: _hideBalance,
+              onToggleHide: () {
+                setState(() => _hideBalance = !_hideBalance);
+              },
+              onRangeChanged: (value) {
+                setState(() => _selectedRange = value);
+              },
             ),
             const SizedBox(height: 18),
             SectionHeader(
@@ -80,11 +243,23 @@ class BalanceCard extends StatelessWidget {
       {super.key,
       required this.totalBalance,
       required this.currency,
-      required this.trend});
+      required this.trend,
+      required this.xAxisLabels,
+      required this.yAxisLabels,
+      required this.selectedRange,
+      required this.hideBalance,
+      required this.onToggleHide,
+      required this.onRangeChanged});
 
   final double totalBalance;
   final String currency;
   final List<double> trend;
+  final List<String> xAxisLabels;
+  final List<String> yAxisLabels;
+  final _BalanceRange selectedRange;
+  final bool hideBalance;
+  final VoidCallback onToggleHide;
+  final ValueChanged<_BalanceRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -107,17 +282,23 @@ class BalanceCard extends StatelessWidget {
                     ),
               ),
               const Spacer(),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2B2E34),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.visibility_off_outlined,
-                  size: 18,
-                  color: Colors.white70,
+              InkWell(
+                onTap: onToggleHide,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2B2E34),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    hideBalance
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
                 ),
               ),
             ],
@@ -125,24 +306,141 @@ class BalanceCard extends StatelessWidget {
           const SizedBox(height: 8),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            child: Text(
-              formatMoney(totalBalance, currency),
-              key: ValueKey(totalBalance),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+            child: ImageFiltered(
+              key: ValueKey('$totalBalance-$hideBalance'),
+              imageFilter: ImageFilter.blur(
+                sigmaX: hideBalance ? 6 : 0,
+                sigmaY: hideBalance ? 6 : 0,
+              ),
+              child: Text(
+                formatMoney(totalBalance, currency),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+              ),
             ),
           ),
+          if (hideBalance) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Balance hidden',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                  ),
+            ),
+          ],
           const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            children: _BalanceRange.values
+                .map((range) => _BalanceFilterChip(
+                      label: range.label,
+                      selected: range == selectedRange,
+                      onTap: () => onRangeChanged(range),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             height: 120,
-            child: AnimatedBalanceChart(values: trend),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 62,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: yAxisLabels
+                        .map(
+                          (label) => Text(
+                            hideBalance ? '••••' : label,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.white54,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AnimatedBalanceChart(values: trend),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: xAxisLabels
+                .map(
+                  (label) => Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
     );
   }
+}
+
+class _BalanceFilterChip extends StatelessWidget {
+  const _BalanceFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFB5FF4D) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: selected ? const Color(0xFF111214) : Colors.white60,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BalanceTrendData {
+  const _BalanceTrendData({
+    required this.normalized,
+    required this.minValue,
+    required this.maxValue,
+  });
+
+  final List<double> normalized;
+  final double minValue;
+  final double maxValue;
 }
 
 class AnimatedBalanceChart extends StatefulWidget {
@@ -223,14 +521,29 @@ class BalanceChartPainter extends CustomPainter {
       ..color = const Color(0xFFB5FF4D).withValues(alpha: 0.12)
       ..style = PaintingStyle.fill;
 
-    final path = Path();
+    final points = <Offset>[];
     for (var i = 0; i < values.length; i++) {
-      final x = size.width * (i / (values.length - 1));
+      final x = values.length == 1 ? 0.0 : size.width * (i / (values.length - 1));
       final y = size.height * (1 - values[i]) * 0.85 + size.height * 0.1;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+      points.add(Offset(x, y));
+    }
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    if (points.length == 1) {
+      path.lineTo(points.first.dx, points.first.dy);
+    } else {
+      for (var i = 0; i < points.length - 1; i++) {
+        final p0 = points[i];
+        final p1 = points[i + 1];
+        final cx = (p0.dx + p1.dx) / 2;
+        path.cubicTo(
+          cx,
+          p0.dy,
+          cx,
+          p1.dy,
+          p1.dx,
+          p1.dy,
+        );
       }
     }
 
