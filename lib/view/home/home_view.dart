@@ -22,12 +22,12 @@ class HomeScreen extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 6),
-            Text(
-              'iSaveUp automatically records your income and expenses to keep budgeting simple.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white54,
-                  ),
-            ),
+            // Text(
+            //   'iSaveUp automatically records your income and expenses to keep budgeting simple.',
+            //   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            //         color: Colors.white54,
+            //       ),
+            // ),
             const SizedBox(height: 16),
             FadeSlideIn(
               delay: 0.0,
@@ -130,10 +130,10 @@ class BudgetCardLight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1E22),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         children: [
