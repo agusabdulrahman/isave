@@ -95,7 +95,10 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
   bool _busy = false;
+  bool _showEmailVerification = false;
   String? _error;
+  String? _pendingEmail;
+  String? _verificationMessage;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -110,6 +113,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
+    final email = _emailController.text.trim();
     setState(() {
       _busy = true;
       _error = null;
@@ -117,21 +121,47 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       if (_isLogin) {
         await supabase.auth.signInWithPassword(
-          email: _emailController.text.trim(),
+          email: email,
           password: _passwordController.text.trim(),
         );
       } else {
+        final fullName = _nameController.text.trim();
         final response = await supabase.auth.signUp(
-          email: _emailController.text.trim(),
+          email: email,
           password: _passwordController.text.trim(),
+          data: {
+            'full_name': fullName,
+          },
         );
         final user = response.user;
-        if (user != null) {
-          await supabase.from('profiles').insert({
+        final session = response.session;
+        if (user != null && session != null) {
+          await supabase.from('profiles').upsert({
             'id': user.id,
-            'full_name': _nameController.text.trim(),
+            'full_name': fullName,
+          });
+        } else if (user != null) {
+          setState(() {
+            _pendingEmail = email;
+            _verificationMessage = null;
+            _showEmailVerification = true;
+            _isLogin = true;
+            _passwordController.clear();
           });
         }
+      }
+    } on AuthApiException catch (e) {
+      if (!_isLogin && _isEmailRateLimitError(e)) {
+        setState(() {
+          _pendingEmail = email;
+          _verificationMessage =
+              'A verification email was already sent to $email. Please check your inbox, or wait a few minutes before creating the account again.';
+          _showEmailVerification = true;
+          _isLogin = true;
+          _passwordController.clear();
+        });
+      } else {
+        setState(() => _error = e.message);
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -139,8 +169,30 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _busy = false);
   }
 
+  bool _isEmailRateLimitError(AuthApiException error) {
+    return error.code == 'over_email_send_rate_limit' ||
+        error.statusCode == '429';
+  }
+
+  void _returnToSignIn() {
+    setState(() {
+      _showEmailVerification = false;
+      _isLogin = true;
+      _error = null;
+      _passwordController.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_showEmailVerification) {
+      return _EmailVerificationScreen(
+        email: _pendingEmail ?? _emailController.text.trim(),
+        message: _verificationMessage,
+        onBackToSignIn: _returnToSignIn,
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -209,11 +261,92 @@ class _AuthScreenState extends State<AuthScreen> {
                       setState(() {
                         _isLogin = !_isLogin;
                         _error = null;
+                        _verificationMessage = null;
+                        _showEmailVerification = false;
                       });
                     },
               child: Text(_isLogin
                   ? 'Create new account'
                   : 'Already have an account? Sign in'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmailVerificationScreen extends StatelessWidget {
+  const _EmailVerificationScreen({
+    required this.email,
+    required this.message,
+    required this.onBackToSignIn,
+  });
+
+  final String email;
+  final String? message;
+  final VoidCallback onBackToSignIn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 48),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFB5FF4D),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.mark_email_read_rounded,
+                color: Color(0xFF1C1B1F),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'Check your email',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message ??
+                  'We sent a verification link to $email. Open that link first, then come back here and sign in to iSaveUp.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(color: Colors.black54, height: 1.45),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onBackToSignIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1C1B1F),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Back to sign in'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'If you do not see the email, check your spam or promotions folder.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.black45),
             ),
           ],
         ),
