@@ -1,14 +1,14 @@
-part of 'package:isaveup/view/app.dart';
+part of 'package:finoov/view/app.dart';
 
-class ISaveUpApp extends StatelessWidget {
-  const ISaveUpApp({super.key});
+class FinoovApp extends StatelessWidget {
+  const FinoovApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final baseTextTheme = GoogleFonts.hankenGroteskTextTheme();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'iSaveUp',
+      title: 'finoov',
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF1C1B1F),
@@ -503,7 +503,7 @@ class _AuthBrandPanel extends StatelessWidget {
         const _BrandMark(size: 58),
         const SizedBox(height: 20),
         Text(
-          'iSaveUp',
+          'finoov',
           style: headline?.copyWith(
             color: const Color(0xFF111214),
             fontWeight: FontWeight.w900,
@@ -697,7 +697,7 @@ class _EmailVerificationScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               message ??
-                  'We sent a verification link to $email. Open that link first, then come back here and sign in to iSaveUp.',
+                  'We sent a verification link to $email. Open that link first, then come back here and sign in to finoov.',
               style: Theme.of(context)
                   .textTheme
                   .bodyLarge

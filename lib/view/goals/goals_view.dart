@@ -1,4 +1,4 @@
-part of 'package:isaveup/view/app.dart';
+part of 'package:finoov/view/app.dart';
 
 enum _ReportRange { m1, m3, m6, y1 }
 

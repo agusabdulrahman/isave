@@ -1,8 +1,8 @@
-# iSaveUp
+# finoov
 
-iSaveUp adalah aplikasi Flutter untuk mencatat income/expense, transfer antar akun, recurring transaction, dan monitoring budget bulanan.
+finoov adalah aplikasi Flutter untuk mencatat income/expense, transfer antar akun, recurring transaction, dan monitoring budget bulanan.
 
-![iSaveUp Screenshot](assets/docs/Screenshot%202026-05-14%20113110.png)
+![finoov Screenshot](assets/docs/Screenshot%202026-05-14%20113110.png)
 
 ## Fitur Utama
 

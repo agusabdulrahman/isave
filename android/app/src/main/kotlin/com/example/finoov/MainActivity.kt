@@ -1,4 +1,4 @@
-package com.example.isaveup
+package com.example.finoov
 
 import io.flutter.embedding.android.FlutterActivity
 

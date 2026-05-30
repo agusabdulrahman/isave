@@ -1,4 +1,4 @@
-part of 'package:isaveup/view/app.dart';
+part of 'package:finoov/view/app.dart';
 
 enum _BalanceRange { d1, w1, m1, m6, y1 }
 

@@ -6,5 +6,5 @@ import 'view/app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initSupabase();
-  runApp(const ISaveUpApp());
+  runApp(const FinoovApp());
 }

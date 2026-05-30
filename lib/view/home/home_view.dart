@@ -1,4 +1,4 @@
-part of 'package:isaveup/view/app.dart';
+part of 'package:finoov/view/app.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -105,7 +105,7 @@ class _HomeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'iSaveUp',
+                'finoov',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: const Color(0xFFB5FF4D),
                       fontWeight: FontWeight.w800,

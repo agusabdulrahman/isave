@@ -1,4 +1,4 @@
-part of 'package:isaveup/view/app.dart';
+part of 'package:finoov/view/app.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
