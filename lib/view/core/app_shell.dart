@@ -558,7 +558,6 @@ class _BrandMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFF111214),
         borderRadius: BorderRadius.circular(size * 0.32),
         boxShadow: [
           BoxShadow(
@@ -568,10 +567,12 @@ class _BrandMark extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
-        Icons.savings_rounded,
-        color: const Color(0xFFB5FF4D),
-        size: size * 0.54,
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/icons/icon_app.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
       ),
     );
   }
