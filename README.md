@@ -73,6 +73,19 @@ Untuk web:
 ```bash
 flutter run -d chrome
 ```
+Build release Android
+```
+flutter build appbundle --release
+```
+
+Hasil file:
+
+```
+build/app/outputs/bundle/release/app-release.aab
+```
+
+File .aab itu nanti yang di-upload ke Google Play Store.
+
 
 ## Command Saat Development
 

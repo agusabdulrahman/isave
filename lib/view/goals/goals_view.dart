@@ -83,7 +83,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     for (final entry in state.transactions) {
       if (entry.currency != currency || entry.date.isBefore(start)) continue;
-      final offset = entry.date.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
+      final offset =
+          entry.date.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
       final index = (offset / bucketWidth).floor().clamp(0, bucketCount - 1);
       final value =
           entry.type == TransactionType.income ? entry.amount : -entry.amount;
@@ -95,9 +96,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final span = maxBucket - minBucket;
     if (span == 0) return List<double>.filled(bucketCount, 0.55);
 
-    return buckets
-        .map((v) => 0.2 + (((v - minBucket) / span) * 0.8))
-        .toList();
+    return buckets.map((v) => 0.2 + (((v - minBucket) / span) * 0.8)).toList();
   }
 
   @override
@@ -182,8 +181,8 @@ class _DarkShell extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFB5FF4D),
                       ),
                 ),
                 const Spacer(),
@@ -219,113 +218,314 @@ class ReportBudgetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spent = max(0.0, total - remaining);
+    final spentPercent = (progress * 100).clamp(0, 999).round();
+    final remainingPercent =
+        total <= 0 ? 0 : ((remaining / total) * 100).clamp(0, 100).round();
+    final isLow = total > 0 && remaining / total <= 0.2;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1E22),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF2A2E36)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 74,
-            height: 74,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Stack(
-                  alignment: Alignment.center,
+          Row(
+            children: [
+              _BudgetDonut(
+                progress: progress,
+                label: '$spentPercent%',
+                size: 84,
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 8,
-                      backgroundColor: const Color(0xFF2D3036),
-                      valueColor:
-                          const AlwaysStoppedAnimation(Color(0xFFB5FF4D)),
-                    ),
-                    Text(
-                      '${(value * 100).round()}%',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Monthly Budget',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFFE9F2D0),
+                                ),
                           ),
+                        ),
+                        FilledButton(
+                          onPressed: onConfigure,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFB5FF4D),
+                            foregroundColor: const Color(0xFF111214),
+                            minimumSize: const Size(0, 34),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                            ),
+                          ),
+                          child: const Text('Set Budget'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Available out of ${formatMoney(total, currency)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              formatMoney(remaining, currency),
+                              key: ValueKey(remaining),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Text(
+                            currency,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: Colors.white60,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monthly Budget',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        letterSpacing: 0.6,
-                        color: Colors.white70,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _BudgetMetric(
+                  label: 'Spent',
+                  value: formatMoney(spent, currency),
+                  color: const Color(0xFFFFD166),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _BudgetMetric(
+                  label: 'Available',
+                  value: '$remainingPercent%',
+                  color: const Color(0xFFB5FF4D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                isLow
+                    ? Icons.trending_down_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: const Color(0xFFB5FF4D),
+                size: 17,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  isLow
+                      ? 'Low balance remaining'
+                      : 'Budget still healthy for this month',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFFB5FF4D),
+                        fontWeight: FontWeight.w800,
                       ),
                 ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: onConfigure,
-                  borderRadius: BorderRadius.circular(15),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSummaryStrip extends StatelessWidget {
+  const _ReportSummaryStrip({
+    required this.expenses,
+    required this.income,
+    required this.currency,
+  });
+
+  final double expenses;
+  final double income;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = income - expenses;
+    final netColor =
+        net >= 0 ? const Color(0xFFB5FF4D) : const Color(0xFFFF7A7A);
+
+    return Row(
+      children: [
+        Expanded(
+          child: _MiniStat(
+            icon: Icons.south_west_rounded,
+            label: 'Income',
+            amount: formatMoney(income, currency),
+            accent: const Color(0xFFB5FF4D),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniStat(
+            icon: Icons.north_east_rounded,
+            label: 'Expense',
+            amount: formatMoney(expenses, currency),
+            accent: const Color(0xFFFFD166),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniStat(
+            icon: Icons.show_chart_rounded,
+            label: 'Net',
+            amount: formatMoney(net.abs(), currency),
+            accent: netColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComparisonBars extends StatelessWidget {
+  const _ComparisonBars({
+    required this.expenses,
+    required this.income,
+    required this.currency,
+  });
+
+  final double expenses;
+  final double income;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = max(1.0, max(expenses, income));
+    return Column(
+      children: [
+        _ComparisonBar(
+          label: 'Income',
+          value: income,
+          total: maxValue,
+          amount: formatMoney(income, currency),
+          color: const Color(0xFFB5FF4D),
+        ),
+        const SizedBox(height: 12),
+        _ComparisonBar(
+          label: 'Expenses',
+          value: expenses,
+          total: maxValue,
+          amount: formatMoney(expenses, currency),
+          color: const Color(0xFFFFD166),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComparisonBar extends StatelessWidget {
+  const _ComparisonBar({
+    required this.label,
+    required this.value,
+    required this.total,
+    required this.amount,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final double total;
+  final String amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = total <= 0 ? 0.0 : (value / total).clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const Spacer(),
+            Text(
+              amount,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            height: 12,
+            child: Stack(
+              children: [
+                Container(color: const Color(0xFF30343D)),
+                FractionallySizedBox(
+                  widthFactor: fraction,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2B2E34),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'Set Budget',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Available out of ${formatMoney(total, currency)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white54,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        formatMoney(remaining, currency),
-                        key: ValueKey(remaining),
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      currency,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Colors.white54,
-                          ),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -533,17 +733,31 @@ class ReportIncomeExpenseCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1E22),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF2A2E36)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Expenses & Income',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Expenses & Income',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
                 ),
+              ),
+              Text(
+                periodLabel,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white54,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -556,23 +770,17 @@ class ReportIncomeExpenseCard extends StatelessWidget {
                     ))
                 .toList(),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _MiniStat(
-                icon: Icons.arrow_upward_rounded,
-                label: 'Expenses for $periodLabel',
-                amount: '-${formatMoney(expenses, currency)}',
-                accent: const Color(0xFF9CA3AF),
-              ),
-              const SizedBox(width: 12),
-              _MiniStat(
-                icon: Icons.arrow_downward_rounded,
-                label: 'Income for $periodLabel',
-                amount: formatMoney(income, currency),
-                accent: const Color(0xFFB5FF4D),
-              ),
-            ],
+          const SizedBox(height: 18),
+          _ReportSummaryStrip(
+            expenses: expenses,
+            income: income,
+            currency: currency,
+          ),
+          const SizedBox(height: 18),
+          _ComparisonBars(
+            expenses: expenses,
+            income: income,
+            currency: currency,
           ),
         ],
       ),
@@ -632,42 +840,43 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF17191D),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2B2E34),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: accent, size: 18),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17191D),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2B2E34),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white54,
-                  ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              amount,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-            ),
-          ],
-        ),
+            child: Icon(icon, color: accent, size: 18),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            amount,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+          ),
+        ],
       ),
     );
   }

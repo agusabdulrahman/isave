@@ -7,81 +7,320 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     final recent = state.recentTransactions.take(3).toList();
-    final budget = state.monthlyBudgets[state.selectedCurrency] ?? 0;
-    return Container(
+    final currency = state.selectedCurrency;
+    final budget = state.budgetForMonth(currency, DateTime.now());
+
+    return ColoredBox(
       color: const Color(0xFF111214),
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'Home',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+              children: [
+                _HomeHeader(
+                  currency: currency,
+                  onCurrencyChanged: state.setCurrency,
+                ),
+                const SizedBox(height: 24),
+                FadeSlideIn(
+                  delay: 0.0,
+                  child: BudgetCardLight(
+                    progress: state.budgetProgress,
+                    remaining: state.remainingBudget,
+                    total: budget,
+                    currency: currency,
                   ),
-            ),
-            const SizedBox(height: 6),
-            // Text(
-            //   'iSaveUp automatically records your income and expenses to keep budgeting simple.',
-            //   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            //         color: Colors.white54,
-            //       ),
-            // ),
-            const SizedBox(height: 16),
-            FadeSlideIn(
-              delay: 0.0,
-              child: BudgetCardLight(
-                progress: state.budgetProgress,
-                remaining: state.remainingBudget,
-                total: budget,
-                currency: state.selectedCurrency,
-              ),
-            ),
-            const SizedBox(height: 18),
-            FadeSlideIn(
-              delay: 0.08,
-              child: ExpensesIncomeCardLight(
-                onExpense: () =>
-                    showAddTransactionSheet(context, TransactionType.expense),
-                onIncome: () =>
-                    showAddTransactionSheet(context, TransactionType.income),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'History of Transactions',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: Colors.white70,
+                ),
+                const SizedBox(height: 16),
+                FadeSlideIn(
+                  delay: 0.08,
+                  child: ExpensesIncomeCardLight(
+                    onExpense: () => showAddTransactionSheet(
+                        context, TransactionType.expense),
+                    onIncome: () => showAddTransactionSheet(
+                        context, TransactionType.income),
                   ),
+                ),
+                const SizedBox(height: 24),
+                const _HomeSectionHeader(
+                  title: 'Recent Transactions',
+                  subtitle: 'Latest wallet movement',
+                ),
+                const SizedBox(height: 12),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: recent.isEmpty
+                      ? const _EmptyTransactionsCard()
+                      : Column(
+                          key: ValueKey(recent.length),
+                          children: recent
+                              .map(
+                                (entry) => TransactionTile(
+                                  title: entry.title,
+                                  subtitle: entry.category,
+                                  amount: (entry.type == TransactionType.expense
+                                          ? '-'
+                                          : '+') +
+                                      formatMoney(entry.amount, entry.currency),
+                                  accent: entry.type == TransactionType.expense
+                                      ? const Color(0xFFFF7A7A)
+                                      : const Color(0xFFB5FF4D),
+                                  icon: entry.type == TransactionType.expense
+                                      ? Icons.north_east_rounded
+                                      : Icons.south_west_rounded,
+                                  onTap: () =>
+                                      showEditTransactionSheet(context, entry),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Column(
-                key: ValueKey(recent.length),
-                children: recent
-                    .map(
-                      (entry) => TransactionTile(
-                        title: entry.title,
-                        subtitle: entry.category,
-                        amount: (entry.type == TransactionType.expense
-                                ? '-'
-                                : '+') +
-                            formatMoney(entry.amount, entry.currency),
-                        accent: entry.type == TransactionType.expense
-                            ? const Color(0xFFFF7A7A)
-                            : const Color(0xFFB5FF4D),
-                        onTap: () => showEditTransactionSheet(context, entry),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.currency,
+    required this.onCurrencyChanged,
+  });
+
+  final String currency;
+  final ValueChanged<String> onCurrencyChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'iSaveUp',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: const Color(0xFFB5FF4D),
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Calm, clear money control',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white54,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        _CurrencyToggle(value: currency, onChanged: onCurrencyChanged),
+      ],
+    );
+  }
+}
+
+class _BalanceOverviewCard extends StatelessWidget {
+  const _BalanceOverviewCard({
+    required this.balance,
+    required this.income,
+    required this.expense,
+    required this.currency,
+  });
+
+  final double balance;
+  final double income;
+  final double expense;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = income - expense;
+    return _HomeCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TOTAL BALANCE',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  formatMoney(balance, currency),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  currency,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Colors.white54,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _OverviewMetric(
+                  label: 'Income',
+                  value: formatMoney(income, currency),
+                  icon: Icons.south_west_rounded,
+                  accent: const Color(0xFFB5FF4D),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _OverviewMetric(
+                  label: 'Expense',
+                  value: formatMoney(expense, currency),
+                  icon: Icons.north_east_rounded,
+                  accent: const Color(0xFFFF7A7A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _NetBadge(net: net, currency: currency),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeCard extends StatelessWidget {
+  const _HomeCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1E22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2E36)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _OverviewMetric extends StatelessWidget {
+  const _OverviewMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2B2E34),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2E36)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: accent, size: 20),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetBadge extends StatelessWidget {
+  const _NetBadge({required this.net, required this.currency});
+
+  final double net;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = net >= 0;
+    final color = positive ? const Color(0xFFB5FF4D) : const Color(0xFFFF7A7A);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            positive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+            color: color,
+            size: 17,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            '${positive ? 'Net gain' : 'Net spend'} ${formatMoney(net.abs(), currency)} this month',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -103,10 +342,11 @@ class _CurrencyToggle extends StatelessWidget {
       selected: {value},
       style: SegmentedButton.styleFrom(
         backgroundColor: const Color(0xFF2B2E34),
-        foregroundColor: Colors.white70,
+        foregroundColor: Colors.white60,
         selectedBackgroundColor: const Color(0xFFB5FF4D),
         selectedForegroundColor: const Color(0xFF111214),
-        side: const BorderSide(color: Color(0xFF2B2E34)),
+        side: const BorderSide(color: Color(0xFF2A2E36)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       onSelectionChanged: (selection) => onChanged(selection.first),
     );
@@ -129,91 +369,250 @@ class BudgetCardLight extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1E22),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
+    final spent = max(0.0, total - remaining);
+    final spentPercent = (progress * 100).clamp(0, 999).round();
+    final remainingPercent =
+        total <= 0 ? 0 : ((remaining / total) * 100).clamp(0, 100).round();
+    final isLow = total > 0 && remaining / total <= 0.2;
+
+    return _HomeCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 74,
-            height: 74,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 8,
-                      backgroundColor: const Color(0xFF2D3036),
-                      valueColor:
-                          const AlwaysStoppedAnimation(Color(0xFFB5FF4D)),
-                    ),
-                    Text(
-                      '${(value * 100).round()}%',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                    ),
-                  ],
-                );
-              },
-            ),
+          Text(
+            'Monthly Budget',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFE9F2D0),
+                ),
           ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monthly Budget',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        letterSpacing: 0.6,
-                        color: Colors.white70,
-                      ),
+          const SizedBox(height: 4),
+          Text(
+            'AVAILABLE OUT OF ${formatMoney(total, currency)}',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Available out of ${formatMoney(total, currency)}'
-                      .toUpperCase(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white54,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+          ),
+          const SizedBox(height: 22),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _BudgetDonut(
+                progress: progress,
+                label: '$spentPercent%',
+                size: 66,
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        formatMoney(remaining, currency),
-                        key: ValueKey(remaining),
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      currency,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Colors.white54,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              formatMoney(remaining, currency),
+                              key: ValueKey(remaining),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: const Color(0xFFFFFFFF),
+                                  ),
+                            ),
                           ),
+                        ),
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text(
+                            currency,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: Colors.white60,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          isLow
+                              ? Icons.trending_down_rounded
+                              : Icons.check_circle_outline_rounded,
+                          color: const Color(0xFFB5FF4D),
+                          size: 17,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            isLow
+                                ? 'Low balance remaining'
+                                : '$remainingPercent% budget still available',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: const Color(0xFFB5FF4D),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _BudgetMetric(
+                  label: 'Spent',
+                  value: formatMoney(spent, currency),
+                  color: const Color(0xFFFFD166),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BudgetMetric(
+                  label: 'Remaining',
+                  value: '$remainingPercent%',
+                  color: const Color(0xFFB5FF4D),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetDonut extends StatelessWidget {
+  const _BudgetDonut({
+    required this.progress,
+    required this.label,
+    this.size = 76,
+  });
+
+  final double progress;
+  final String label;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: progress.clamp(0, 1)),
+        duration: const Duration(milliseconds: 850),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: Size.square(size),
+                painter: _BudgetDonutPainter(progress: value),
+              ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFFB5FF4D),
+                    ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BudgetDonutPainter extends CustomPainter {
+  const _BudgetDonutPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = size.width * 0.1;
+    final rect = Offset(stroke / 2, stroke / 2) &
+        Size(size.width - stroke, size.height - stroke);
+    final track = Paint()
+      ..color = const Color(0xFF2D3036)
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final active = Paint()
+      ..color = const Color(0xFFB5FF4D)
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawArc(rect, -pi / 2, pi * 2, false, track);
+    canvas.drawArc(rect, -pi / 2, pi * 2 * progress, false, active);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BudgetDonutPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _BudgetMetric extends StatelessWidget {
+  const _BudgetMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2B2E34),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2E36)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
           ),
         ],
       ),
@@ -233,20 +632,16 @@ class ExpensesIncomeCardLight extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1E22),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return _HomeCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Expenses & Income',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFE9F2D0),
                 ),
           ),
           const SizedBox(height: 6),
@@ -300,28 +695,116 @@ class _ActionPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: label == 'Income'
               ? const Color(0xFFB5FF4D)
-              : const Color(0xFFEFF1F6),
-          borderRadius: BorderRadius.circular(16),
+              : const Color(0xFF2B2E34),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: label == 'Income'
                 ? const Color(0xFFB5FF4D)
-                : const Color(0xFFD8DCE7),
+                : const Color(0xFF2A2E36),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18),
+            Icon(
+              icon,
+              size: 18,
+              color: label == 'Income'
+                  ? const Color(0xFF111214)
+                  : const Color(0xFFE9F2D0),
+            ),
             const SizedBox(width: 6),
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111214),
+                    color: label == 'Income'
+                        ? const Color(0xFF111214)
+                        : const Color(0xFFE9F2D0),
                   ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HomeSectionHeader extends StatelessWidget {
+  const _HomeSectionHeader({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFFE9F2D0),
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white54,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        const Icon(
+          Icons.more_horiz_rounded,
+          color: Colors.white54,
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyTransactionsCard extends StatelessWidget {
+  const _EmptyTransactionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _HomeCard(
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2B2E34),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: Colors.white54,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No recent transactions yet.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white54,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -334,6 +817,7 @@ class TransactionTile extends StatelessWidget {
     required this.subtitle,
     required this.amount,
     required this.accent,
+    required this.icon,
     required this.onTap,
   });
 
@@ -341,6 +825,7 @@ class TransactionTile extends StatelessWidget {
   final String subtitle;
   final String amount;
   final Color accent;
+  final IconData icon;
   final VoidCallback onTap;
 
   @override
@@ -353,7 +838,8 @@ class TransactionTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF1C1E22),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2A2E36)),
         ),
         child: Row(
           children: [
@@ -361,13 +847,14 @@ class TransactionTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF2B2E34),
-                borderRadius: BorderRadius.circular(14),
+                color: accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: accent.withValues(alpha: 0.18)),
               ),
-              child: const Icon(
-                Icons.card_giftcard_outlined,
+              child: Icon(
+                icon,
                 size: 22,
-                color: Colors.white70,
+                color: accent,
               ),
             ),
             const SizedBox(width: 12),
@@ -378,8 +865,8 @@ class TransactionTile extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFE9F2D0),
                         ),
                   ),
                   const SizedBox(height: 4),
@@ -395,7 +882,7 @@ class TransactionTile extends StatelessWidget {
             Text(
               amount,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w900,
                     color: accent,
                   ),
             ),

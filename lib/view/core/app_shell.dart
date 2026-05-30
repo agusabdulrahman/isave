@@ -5,18 +5,57 @@ class ISaveUpApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseTextTheme = GoogleFonts.dmSansTextTheme();
+    final baseTextTheme = GoogleFonts.hankenGroteskTextTheme();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'iSaveUp',
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF1C1B1F),
-          secondary: Color(0xFF4C7DFF),
-          surface: Color(0xFFF6F6F7),
+          secondary: Color(0xFFB5FF4D),
+          tertiary: Color(0xFF4C7DFF),
+          surface: Color(0xFFF7F8FA),
+          error: Color(0xFFB42318),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF6F6F7),
+        scaffoldBackgroundColor: const Color(0xFFF7F8FA),
         textTheme: baseTextTheme,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: Color(0xFF1C1B1F), width: 1.4),
+          ),
+          labelStyle: const TextStyle(color: Color(0xFF6D7380)),
+          prefixIconColor: const Color(0xFF6D7380),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1C1B1F),
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF1C1B1F),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
         useMaterial3: true,
       ),
       home: const AuthGate(),
@@ -194,83 +233,422 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const SizedBox(height: 24),
-            Text(
-              'iSaveUp',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+      body: Stack(
+        children: [
+          const _AuthBackdrop(),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 860;
+                return Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1040),
+                      child: wide
+                          ? Row(
+                              children: [
+                                const Expanded(child: _AuthBrandPanel()),
+                                const SizedBox(width: 32),
+                                SizedBox(
+                                  width: 440,
+                                  child: _buildAuthCard(context),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const _AuthBrandPanel(compact: true),
+                                const SizedBox(height: 22),
+                                _buildAuthCard(context),
+                              ],
+                            ),
+                    ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Automatic budgeting for busy people.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge
-                  ?.copyWith(color: Colors.black54),
-            ),
-            const SizedBox(height: 24),
-            if (!_isLogin)
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Full name', border: OutlineInputBorder()),
-              ),
-            if (!_isLogin) const SizedBox(height: 12),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                  labelText: 'Email', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                  labelText: 'Password', border: OutlineInputBorder()),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _busy ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1C1B1F),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuthCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A111214),
+            blurRadius: 34,
+            offset: Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const _BrandMark(size: 44),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isLogin ? 'Welcome back' : 'Create your account',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF111214),
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isLogin
+                          ? 'Sign in and keep your money on track.'
+                          : 'Start tracking your wallet in minutes.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: const Color(0xFF6D7380),
+                          ),
+                    ),
+                  ],
                 ),
-                child: Text(_isLogin ? 'Sign in' : 'Create account'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: true,
+                label: Text('Sign in'),
+                icon: Icon(Icons.login_rounded),
+              ),
+              ButtonSegment(
+                value: false,
+                label: Text('Register'),
+                icon: Icon(Icons.person_add_alt_1_rounded),
+              ),
+            ],
+            selected: {_isLogin},
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF1C1B1F);
+                }
+                return const Color(0xFFF1F3F6);
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return const Color(0xFF4A505A);
+              }),
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () {
-                      setState(() {
-                        _isLogin = !_isLogin;
-                        _error = null;
-                        _verificationMessage = null;
-                        _showEmailVerification = false;
-                      });
-                    },
-              child: Text(_isLogin
-                  ? 'Create new account'
-                  : 'Already have an account? Sign in'),
+            onSelectionChanged: _busy
+                ? null
+                : (value) {
+                    setState(() {
+                      _isLogin = value.first;
+                      _error = null;
+                      _verificationMessage = null;
+                      _showEmailVerification = false;
+                    });
+                  },
+          ),
+          const SizedBox(height: 22),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: !_isLogin
+                ? Column(
+                    key: const ValueKey('name-field'),
+                    children: [
+                      TextField(
+                        controller: _nameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Full name',
+                          prefixIcon: Icon(Icons.badge_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                  )
+                : const SizedBox.shrink(key: ValueKey('no-name-field')),
+          ),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.alternate_email_rounded),
             ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            onSubmitted: (_) {
+              if (!_busy) {
+                _submit();
+              }
+            },
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline_rounded),
+            ),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: _error == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: _AuthMessage(
+                      icon: Icons.error_outline_rounded,
+                      color: const Color(0xFFB42318),
+                      text: _error!,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _busy ? null : _submit,
+            icon: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(_isLogin
+                    ? Icons.arrow_forward_rounded
+                    : Icons.check_rounded),
+            label: Text(_isLogin ? 'Sign in' : 'Create account'),
+          ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () {
+                    setState(() {
+                      _isLogin = !_isLogin;
+                      _error = null;
+                      _verificationMessage = null;
+                      _showEmailVerification = false;
+                    });
+                  },
+            child: Text(_isLogin
+                ? 'Create new account'
+                : 'Already have an account? Sign in'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthBackdrop extends StatelessWidget {
+  const _AuthBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFEFF8F2),
+            Color(0xFFF7F8FA),
+            Color(0xFFEAF0FF),
           ],
         ),
+      ),
+      child: SizedBox.expand(),
+    );
+  }
+}
+
+class _AuthBrandPanel extends StatelessWidget {
+  const _AuthBrandPanel({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final headline = compact
+        ? Theme.of(context).textTheme.headlineMedium
+        : Theme.of(context).textTheme.displaySmall;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _BrandMark(size: 58),
+        const SizedBox(height: 20),
+        Text(
+          'iSaveUp',
+          style: headline?.copyWith(
+            color: const Color(0xFF111214),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 510),
+          child: Text(
+            'A cleaner way to watch your balance, spending rhythm, and monthly goals.',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: const Color(0xFF4A505A),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+        if (!compact) ...[
+          const SizedBox(height: 28),
+          const Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _FeaturePill(
+                icon: Icons.account_balance_wallet_rounded,
+                label: 'Wallets',
+              ),
+              _FeaturePill(
+                icon: Icons.trending_up_rounded,
+                label: 'Reports',
+              ),
+              _FeaturePill(
+                icon: Icons.flag_rounded,
+                label: 'Goals',
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF111214),
+        borderRadius: BorderRadius.circular(size * 0.32),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4C7DFF).withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Icon(
+        Icons.savings_rounded,
+        color: const Color(0xFFB5FF4D),
+        size: size * 0.54,
+      ),
+    );
+  }
+}
+
+class _FeaturePill extends StatelessWidget {
+  const _FeaturePill({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.76),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF1C1B1F)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: const Color(0xFF1C1B1F),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthMessage extends StatelessWidget {
+  const _AuthMessage({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }

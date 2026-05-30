@@ -37,6 +37,13 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            // Workaround for Windows strip task failures on some native libs.
+            keepDebugSymbols += "**/*.so"
+        }
+    }
 }
 
 flutter {
