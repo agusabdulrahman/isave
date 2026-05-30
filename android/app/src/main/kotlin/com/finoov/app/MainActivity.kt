@@ -1,4 +1,4 @@
-package com.example.finoov
+package com.finoov.app
 
 import io.flutter.embedding.android.FlutterActivity
 

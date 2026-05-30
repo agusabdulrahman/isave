@@ -73,7 +73,9 @@ Untuk web:
 ```bash
 flutter run -d chrome
 ```
+
 Build release Android
+
 ```
 flutter build appbundle --release
 ```
@@ -86,6 +88,23 @@ build/app/outputs/bundle/release/app-release.aab
 
 File .aab itu nanti yang di-upload ke Google Play Store.
 
+7. Build File Untuk Play Store
+   Google Play menggunakan .aab, bukan APK debug.
+
+Jalankan:
+
+flutter clean
+flutter pub get
+flutter build appbundle --release
+Output-nya ada di:
+
+build/app/outputs/bundle/release/app-release.aab
+File itulah yang di-upload ke Play Console.
+
+8. Test Release Sebelum Upload
+   Minimal build APK release untuk dites langsung:
+
+flutter build apk --release
 
 ## Command Saat Development
 
