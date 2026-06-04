@@ -362,7 +362,7 @@ class AppState extends ChangeNotifier {
       return defaultBudget;
     }
     final key = '${_monthKey(date)}|$currency';
-    return manualMonthlyBudgets[key] ?? defaultBudget;
+    return manualMonthlyBudgets[key] ?? 0;
   }
 
   void setBudgetResetMode(BudgetResetMode mode) {

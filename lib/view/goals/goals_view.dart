@@ -579,6 +579,34 @@ class _BudgetSettingSheetState extends State<_BudgetSettingSheet> {
     super.dispose();
   }
 
+  double _budgetAmountForMode({
+    required AppState state,
+    required BudgetResetMode mode,
+    required DateTime month,
+  }) {
+    if (mode == BudgetResetMode.autoMonthly) {
+      return state.monthlyBudgets[state.selectedCurrency] ?? 0;
+    }
+
+    final key =
+        '${month.year}-${month.month.toString().padLeft(2, '0')}|${state.selectedCurrency}';
+    return state.manualMonthlyBudgets[key] ?? 0;
+  }
+
+  void _setMode(BudgetResetMode mode) {
+    final state = AppStateScope.of(context);
+    final selectedMonth =
+        _selectedMonth ?? DateTime(DateTime.now().year, DateTime.now().month);
+    setState(() {
+      _mode = mode;
+      _amountController.text = _budgetAmountForMode(
+        state: state,
+        mode: mode,
+        month: selectedMonth,
+      ).round().toString();
+    });
+  }
+
   Future<void> _pickMonth() async {
     final picked = await showDatePicker(
       context: context,
@@ -589,13 +617,16 @@ class _BudgetSettingSheetState extends State<_BudgetSettingSheet> {
     );
     if (picked == null) return;
     final selected = DateTime(picked.year, picked.month);
+    if (!mounted) return;
     final state = AppStateScope.of(context);
+    final currentMode = _mode ?? BudgetResetMode.autoMonthly;
     setState(() {
       _selectedMonth = selected;
-      _amountController.text = state
-          .budgetForMonth(state.selectedCurrency, _selectedMonth!)
-          .round()
-          .toString();
+      _amountController.text = _budgetAmountForMode(
+        state: state,
+        mode: currentMode,
+        month: _selectedMonth!,
+      ).round().toString();
     });
   }
 
@@ -642,32 +673,49 @@ class _BudgetSettingSheetState extends State<_BudgetSettingSheet> {
                   ),
             ),
             const SizedBox(height: 14),
-            SegmentedButton<BudgetResetMode>(
-              segments: const [
-                ButtonSegment(
-                  value: BudgetResetMode.autoMonthly,
-                  label: Text('Auto Monthly'),
-                ),
-                ButtonSegment(
-                  value: BudgetResetMode.manualMonthly,
-                  label: Text('Manual per Month'),
-                ),
-              ],
-              selected: {currentMode},
-              style: SegmentedButton.styleFrom(
-                backgroundColor: const Color(0xFF2B2E34),
-                foregroundColor: Colors.white70,
-                selectedBackgroundColor: const Color(0xFFB5FF4D),
-                selectedForegroundColor: const Color(0xFF111214),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2B2E34),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF343841)),
               ),
-              onSelectionChanged: (value) =>
-                  setState(() => _mode = value.first),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _BudgetModeButton(
+                      label: 'Auto Monthly',
+                      selected: currentMode == BudgetResetMode.autoMonthly,
+                      onTap: () => _setMode(BudgetResetMode.autoMonthly),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _BudgetModeButton(
+                      label: 'Manual / Month',
+                      selected: currentMode == BudgetResetMode.manualMonthly,
+                      onTap: () => _setMode(BudgetResetMode.manualMonthly),
+                    ),
+                  ),
+                ],
+              ),
             ),
             if (currentMode == BudgetResetMode.manualMonthly) ...[
               const SizedBox(height: 14),
-              OutlinedButton(
-                onPressed: _pickMonth,
-                child: Text('Month: $monthLabel'),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _pickMonth,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF343841)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text('Month: $monthLabel'),
+                ),
               ),
             ],
             const SizedBox(height: 14),
@@ -675,8 +723,11 @@ class _BudgetSettingSheetState extends State<_BudgetSettingSheet> {
               controller: _amountController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              cursorColor: Colors.white,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF24272E),
                 labelText: 'Budget Amount',
                 labelStyle: const TextStyle(color: Colors.white70),
                 suffixText: state.selectedCurrency,
@@ -704,6 +755,49 @@ class _BudgetSettingSheetState extends State<_BudgetSettingSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetModeButton extends StatelessWidget {
+  const _BudgetModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFFB5FF4D) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          height: 42,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: selected ? const Color(0xFF111214) : Colors.white70,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
