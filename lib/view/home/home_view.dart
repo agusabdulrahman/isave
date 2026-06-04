@@ -910,6 +910,8 @@ class TransactionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFFE9F2D0),
@@ -918,6 +920,8 @@ class TransactionTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white54,
                         ),
@@ -925,12 +929,24 @@ class TransactionTile extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
-              amount,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: accent,
-                  ),
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.36,
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  amount,
+                  maxLines: 1,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: accent,
+                      ),
+                ),
+              ),
             ),
           ],
         ),
@@ -1013,83 +1029,98 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
-            20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Edit Transaction',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+          20,
+          20,
+          20,
+          20 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.82,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit Transaction',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _titleController,
+                cursorColor: Colors.white,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF24272E),
+                  labelText: 'Title',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF2D3036)),
                   ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _titleController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Title',
-                labelStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2D3036)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFB5FF4D)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFB5FF4D)),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _amountController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                suffixText: widget.entry.currency,
-                labelStyle: const TextStyle(color: Colors.white70),
-                suffixStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2D3036)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFB5FF4D)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                cursorColor: Colors.white,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF24272E),
+                  labelText: 'Amount',
+                  suffixText: widget.entry.currency,
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  suffixStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF2D3036)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFB5FF4D)),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : () => _save(state),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFB5FF4D),
-                  foregroundColor: const Color(0xFF111214),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : () => _save(state),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB5FF4D),
+                    foregroundColor: const Color(0xFF111214),
+                  ),
+                  child: Text(_saving ? 'Saving...' : 'Save Changes'),
                 ),
-                child: Text(_saving ? 'Saving...' : 'Save Changes'),
               ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _saving ? null : () => _delete(state),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF7A7A),
-                  side: const BorderSide(color: Color(0xFFFF7A7A)),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _saving ? null : () => _delete(state),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFF7A7A),
+                    side: const BorderSide(color: Color(0xFFFF7A7A)),
+                  ),
+                  child: const Text('Delete Transaction'),
                 ),
-                child: const Text('Delete Transaction'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
