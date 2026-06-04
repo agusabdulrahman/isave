@@ -64,6 +64,33 @@ class _CurrencySettingCard extends StatelessWidget {
   }
 }
 
+class _CurrencyToggle extends StatelessWidget {
+  const _CurrencyToggle({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(value: 'USD', label: Text('USD')),
+        ButtonSegment(value: 'IDR', label: Text('IDR')),
+      ],
+      selected: {value},
+      style: SegmentedButton.styleFrom(
+        backgroundColor: const Color(0xFF2B2E34),
+        foregroundColor: Colors.white60,
+        selectedBackgroundColor: const Color(0xFFB5FF4D),
+        selectedForegroundColor: const Color(0xFF111214),
+        side: const BorderSide(color: Color(0xFF2A2E36)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
 class _SettingsCard extends StatelessWidget {
   const _SettingsCard();
 
@@ -82,18 +109,18 @@ class _SettingsCard extends StatelessWidget {
             title: 'Accounts',
             subtitle: 'Customize sections',
           ),
-          SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.grid_view_rounded,
-            title: 'Categories',
-            subtitle: 'Customize sections',
-          ),
-          SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            title: 'Shared Access',
-            subtitle: 'Customize sections',
-          ),
+          // SizedBox(height: 12),
+          // _SettingsTile(
+          //   icon: Icons.grid_view_rounded,
+          //   title: 'Categories',
+          //   subtitle: 'Customize sections',
+          // ),
+          // SizedBox(height: 12),
+          // _SettingsTile(
+          //   icon: Icons.group_outlined,
+          //   title: 'Shared Access',
+          //   subtitle: 'Customize sections',
+          // ),
         ],
       ),
     );
@@ -118,18 +145,18 @@ class _SettingsCardSecondary extends StatelessWidget {
             title: 'Theme',
             subtitle: 'Additional settings',
           ),
-          SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.language_outlined,
-            title: 'Language',
-            subtitle: 'Additional settings',
-          ),
-          SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.lock_outline_rounded,
-            title: 'Security',
-            subtitle: 'Additional settings',
-          ),
+          // SizedBox(height: 12),
+          // _SettingsTile(
+          //   icon: Icons.language_outlined,
+          //   title: 'Language',
+          //   subtitle: 'Additional settings',
+          // ),
+          // SizedBox(height: 12),
+          // _SettingsTile(
+          //   icon: Icons.lock_outline_rounded,
+          //   title: 'Security',
+          //   subtitle: 'Additional settings',
+          // ),
         ],
       ),
     );

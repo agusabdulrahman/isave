@@ -1,12 +1,65 @@
 part of 'package:finoov/view/app.dart';
 
-class HomeScreen extends StatelessWidget {
+enum _RecentTransactionFilter { thisMonth, latest3, latest10 }
+
+extension on _RecentTransactionFilter {
+  String get label {
+    switch (this) {
+      case _RecentTransactionFilter.thisMonth:
+        return 'Full month';
+      case _RecentTransactionFilter.latest3:
+        return '3 latest';
+      case _RecentTransactionFilter.latest10:
+        return '10 latest';
+    }
+  }
+
+  String get subtitle {
+    switch (this) {
+      case _RecentTransactionFilter.thisMonth:
+        return 'All transactions this month';
+      case _RecentTransactionFilter.latest3:
+        return 'Latest 3 wallet movements';
+      case _RecentTransactionFilter.latest10:
+        return 'Latest 10 wallet movements';
+    }
+  }
+}
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  _RecentTransactionFilter _recentFilter = _RecentTransactionFilter.latest3;
+
+  List<TransactionEntry> _filteredTransactions(AppState state) {
+    final entries = state.transactions
+        .where((entry) => entry.currency == state.selectedCurrency)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    switch (_recentFilter) {
+      case _RecentTransactionFilter.thisMonth:
+        final now = DateTime.now();
+        return entries
+            .where((entry) =>
+                entry.date.year == now.year && entry.date.month == now.month)
+            .toList();
+      case _RecentTransactionFilter.latest3:
+        return entries.take(3).toList();
+      case _RecentTransactionFilter.latest10:
+        return entries.take(10).toList();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
-    final recent = state.recentTransactions.take(3).toList();
+    final recent = _filteredTransactions(state);
     final currency = state.selectedCurrency;
     final income = state.totalIncomeThisMonth;
     final expense = state.totalExpenseThisMonth;
@@ -20,10 +73,7 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
               children: [
-                _HomeHeader(
-                  currency: currency,
-                  onCurrencyChanged: state.setCurrency,
-                ),
+                const _HomeHeader(),
                 const SizedBox(height: 24),
                 FadeSlideIn(
                   delay: 0.0,
@@ -44,9 +94,35 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const _HomeSectionHeader(
+                _HomeSectionHeader(
                   title: 'Recent Transactions',
-                  subtitle: 'Latest wallet movement',
+                  subtitle: _recentFilter.subtitle,
+                  trailing: PopupMenuButton<_RecentTransactionFilter>(
+                    initialValue: _recentFilter,
+                    color: const Color(0xFF1C1E22),
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      color: Colors.white54,
+                    ),
+                    onSelected: (value) =>
+                        setState(() => _recentFilter = value),
+                    itemBuilder: (context) => _RecentTransactionFilter.values
+                        .map(
+                          (filter) => PopupMenuItem(
+                            value: filter,
+                            child: Text(
+                              filter.label,
+                              style: TextStyle(
+                                color: filter == _recentFilter
+                                    ? const Color(0xFFB5FF4D)
+                                    : Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 AnimatedSwitcher(
@@ -54,7 +130,8 @@ class HomeScreen extends StatelessWidget {
                   child: recent.isEmpty
                       ? const _EmptyTransactionsCard()
                       : Column(
-                          key: ValueKey(recent.length),
+                          key: ValueKey(
+                              '${_recentFilter.name}-${recent.length}'),
                           children: recent
                               .map(
                                 (entry) => TransactionTile(
@@ -87,13 +164,7 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({
-    required this.currency,
-    required this.onCurrencyChanged,
-  });
-
-  final String currency;
-  final ValueChanged<String> onCurrencyChanged;
+  const _HomeHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +193,6 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         ),
-        _CurrencyToggle(value: currency, onChanged: onCurrencyChanged),
       ],
     );
   }
@@ -322,33 +392,6 @@ class _NetBadge extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CurrencyToggle extends StatelessWidget {
-  const _CurrencyToggle({required this.value, required this.onChanged});
-
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'USD', label: Text('USD')),
-        ButtonSegment(value: 'IDR', label: Text('IDR')),
-      ],
-      selected: {value},
-      style: SegmentedButton.styleFrom(
-        backgroundColor: const Color(0xFF2B2E34),
-        foregroundColor: Colors.white60,
-        selectedBackgroundColor: const Color(0xFFB5FF4D),
-        selectedForegroundColor: const Color(0xFF111214),
-        side: const BorderSide(color: Color(0xFF2A2E36)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      onSelectionChanged: (selection) => onChanged(selection.first),
     );
   }
 }
@@ -734,10 +777,12 @@ class _HomeSectionHeader extends StatelessWidget {
   const _HomeSectionHeader({
     required this.title,
     required this.subtitle,
+    this.trailing,
   });
 
   final String title;
   final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -765,10 +810,11 @@ class _HomeSectionHeader extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(
-          Icons.more_horiz_rounded,
-          color: Colors.white54,
-        ),
+        trailing ??
+            const Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white54,
+            ),
       ],
     );
   }
