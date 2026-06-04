@@ -8,7 +8,8 @@ class HomeScreen extends StatelessWidget {
     final state = AppStateScope.of(context);
     final recent = state.recentTransactions.take(3).toList();
     final currency = state.selectedCurrency;
-    final budget = state.budgetForMonth(currency, DateTime.now());
+    final income = state.totalIncomeThisMonth;
+    final expense = state.totalExpenseThisMonth;
 
     return ColoredBox(
       color: const Color(0xFF111214),
@@ -26,10 +27,9 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 FadeSlideIn(
                   delay: 0.0,
-                  child: BudgetCardLight(
-                    progress: state.budgetProgress,
-                    remaining: state.remainingBudget,
-                    total: budget,
+                  child: _BalanceOverviewCard(
+                    income: income,
+                    expense: expense,
                     currency: currency,
                   ),
                 ),
@@ -130,13 +130,11 @@ class _HomeHeader extends StatelessWidget {
 
 class _BalanceOverviewCard extends StatelessWidget {
   const _BalanceOverviewCard({
-    required this.balance,
     required this.income,
     required this.expense,
     required this.currency,
   });
 
-  final double balance;
   final double income;
   final double expense;
   final String currency;
@@ -150,7 +148,7 @@ class _BalanceOverviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'TOTAL BALANCE',
+            'THIS MONTH',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Colors.white54,
                   fontWeight: FontWeight.w800,
@@ -163,11 +161,13 @@ class _BalanceOverviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  formatMoney(balance, currency),
+                  formatMoney(net.abs(), currency),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: Colors.white,
+                        color: net >= 0
+                            ? const Color(0xFFB5FF4D)
+                            : const Color(0xFFFF7A7A),
                         fontWeight: FontWeight.w900,
                       ),
                 ),
